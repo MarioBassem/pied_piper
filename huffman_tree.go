@@ -130,24 +130,33 @@ func (n *node) compress(data []byte) ([]byte, error) {
 
 func (root *node) decompress(bits []bool) ([]byte, error) {
 	data := []byte{}
+	if len(bits) == 0 {
+		return data, nil
+	}
+
 	cur := root
-	for idx, b := range bits {
+	for i := 0; i <= len(bits); i++ {
 		if cur == nil {
-			return nil, errInvalidCompressedData
+			return nil, fmt.Errorf("invalid char code: %w", errInvalidCompressedData)
 		}
 
 		if cur.IsLeaf {
 			data = append(data, cur.Value)
 			cur = root
+			if i == len(bits) {
+				break
+			}
+
+			i--
 			continue
 		}
 
-		if idx == len(bits)-1 {
+		if i == len(bits) {
 			// last bit must be a leaf
-			return nil, errInvalidCompressedData
+			return nil, fmt.Errorf("incorrect last character code: %w", errInvalidCompressedData)
 		}
 
-		if b == false {
+		if bits[i] == false {
 			cur = cur.Left
 			continue
 		}
