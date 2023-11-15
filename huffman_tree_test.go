@@ -112,3 +112,119 @@ func TestBuildFrequencyTree(t *testing.T) {
 		})
 	}
 }
+
+func TestDecompress(t *testing.T) {
+	t.Run("ab_tree", func(t *testing.T) {
+		root := &node{Frequency: 6, Left: &node{Frequency: 3, IsLeaf: true, Value: 97}, Right: &node{Frequency: 3, IsLeaf: true, Value: 98}}
+
+		tests := map[string]struct {
+			input    []bool
+			expected []byte
+			hasError bool
+		}{
+			"nil_input": {
+				input:    nil,
+				expected: []byte{},
+				hasError: false,
+			},
+			"empty_input": {
+				input:    []bool{},
+				expected: []byte{},
+				hasError: false,
+			},
+			"valid_data": {
+				input:    []bool{false, true, false, false, true},
+				expected: []byte("abaab"),
+				hasError: false,
+			},
+		}
+
+		for name, tc := range tests {
+			t.Run(name, func(t *testing.T) {
+				got, err := root.decompress(tc.input)
+				if tc.hasError {
+					assert.Error(t, err)
+					return
+				}
+
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expected, got)
+			})
+		}
+
+	})
+
+	t.Run("abc_tree", func(t *testing.T) {
+		root := &node{
+			Frequency: 10,
+			Left: &node{
+				Frequency: 5,
+				IsLeaf:    true,
+				Value:     97,
+			},
+			Right: &node{
+				Frequency: 5,
+				Left: &node{
+					Frequency: 2,
+					IsLeaf:    true,
+					Value:     98,
+				},
+				Right: &node{
+					Frequency: 3,
+					IsLeaf:    true,
+					Value:     99,
+				},
+			},
+		}
+
+		tests := map[string]struct {
+			input    []bool
+			expected []byte
+			hasError bool
+		}{
+			"nil_input": {
+				input:    nil,
+				expected: []byte{},
+				hasError: false,
+			},
+			"empty_input": {
+				input:    []bool{},
+				expected: []byte{},
+				hasError: false,
+			},
+			"valid_data": {
+				input:    []bool{false, true, false, true, true},
+				expected: []byte("abc"),
+				hasError: false,
+			},
+			"invalid_char": {
+				input:    []bool{true},
+				hasError: true,
+			},
+		}
+
+		for name, tc := range tests {
+			t.Run(name, func(t *testing.T) {
+				got, err := root.decompress(tc.input)
+				if tc.hasError {
+					assert.Error(t, err)
+					return
+				}
+
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expected, got)
+			})
+		}
+	})
+}
+
+func printTree(t *node) {
+	if t == nil {
+		fmt.Printf("\n")
+		return
+	}
+
+	fmt.Printf("%+v\n", t)
+	printTree(t.Left)
+	printTree(t.Right)
+}
