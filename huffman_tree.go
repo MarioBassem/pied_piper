@@ -2,9 +2,14 @@ package main
 
 import (
 	"container/heap"
+	"encoding/binary"
+	"errors"
+	"fmt"
 
 	"github.com/bits-and-blooms/bitset"
 )
+
+var errInvalidCompressedData = errors.New("invalid compressed data")
 
 type node struct {
 	Frequency uint32 `json:",omitempty"`
@@ -23,6 +28,13 @@ func buildHuffmanTree(b []byte) *node {
 	byteFrequency := map[byte]uint32{}
 	for idx := range b {
 		byteFrequency[b[idx]]++
+	}
+
+	// ensure there are more than one character
+	for _, c := range []byte{'a', 'b'} {
+		if _, ok := byteFrequency[c]; !ok {
+			byteFrequency[c] = 0
+		}
 	}
 
 	nodes := &nodeHeap{}
@@ -52,7 +64,37 @@ func buildHuffmanTree(b []byte) *node {
 }
 
 func (n *node) buildPrefixCodeTable() map[byte][]bool {
-	return nil
+	table := map[byte][]bool{}
+	representation := []bool{}
+
+	explore(n, representation, table)
+
+	return table
+}
+
+// explore explores tree nodes, while assigning binary representation to leaf nodes in the code table
+func explore(n *node, representation []bool, table map[byte][]bool) {
+	if n == nil {
+		// should never happen
+		return
+	}
+
+	defer func() {
+		representation = representation[:len(representation)-1]
+	}()
+
+	if n.IsLeaf {
+		table[n.Value] = representation
+		return
+	}
+
+	representation = append(representation, false)
+	explore(n.Left, representation, table)
+	representation = representation[:len(representation)-1]
+
+	representation = append(representation, true)
+	explore(n.Right, representation, table)
+	representation = representation[:len(representation)-1]
 }
 
 func (n *node) compress(data []byte) ([]byte, error) {
@@ -73,10 +115,45 @@ func (n *node) compress(data []byte) ([]byte, error) {
 		}
 	}
 
-	binary, err := biteSet.MarshalBinary()
+	bin, err := biteSet.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("generated bin: %+v", bin)
 
-	return binary, nil
+	result := make([]byte, 4+len(bin))
+	copy(result[4:], bin)
+
+	binary.BigEndian.PutUint32(result, uint32(len(bits)))
+	return result, nil
+}
+
+func (root *node) decompress(bits []bool) ([]byte, error) {
+	data := []byte{}
+	cur := root
+	for idx, b := range bits {
+		if cur == nil {
+			return nil, errInvalidCompressedData
+		}
+
+		if cur.IsLeaf {
+			data = append(data, cur.Value)
+			cur = root
+			continue
+		}
+
+		if idx == len(bits)-1 {
+			// last bit must be a leaf
+			return nil, errInvalidCompressedData
+		}
+
+		if b == false {
+			cur = cur.Left
+			continue
+		}
+
+		cur = cur.Right
+	}
+
+	return data, nil
 }

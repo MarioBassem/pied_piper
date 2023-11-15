@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -105,20 +106,9 @@ func TestBuildFrequencyTree(t *testing.T) {
 			got := buildHuffmanTree([]byte(tc.input))
 			assert.Equal(t, tc.expected, got)
 
-			// jsonTree, err := json.Marshal(got)
-			// assert.NoError(t, err)
-			// fmt.Printf("json tree: %s", jsonTree)
+			jsonTree, err := json.Marshal(got)
+			assert.NoError(t, err)
+			fmt.Printf("json tree: %s", jsonTree)
 		})
 	}
-}
-
-func printTree(t *node) {
-	if t == nil {
-		fmt.Printf("\n")
-		return
-	}
-
-	fmt.Printf("%+v\n", t)
-	printTree(t.Left)
-	printTree(t.Right)
 }
