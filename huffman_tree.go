@@ -98,9 +98,7 @@ func (n *node) compress(data []byte) ([]byte, error) {
 			return nil, errors.New("byte '%c' is not found in prefix code table")
 		}
 
-		for _, bit := range code {
-			bits = append(bits, bit)
-		}
+		bits = append(bits, code...)
 	}
 
 	binBytes := []byte{}
@@ -155,7 +153,7 @@ func (root *node) decompress(bits []bool) ([]byte, error) {
 			return nil, fmt.Errorf("incorrect last character code: %w", errInvalidCompressedData)
 		}
 
-		if bits[i] == false {
+		if !bits[i] {
 			cur = cur.Left
 			continue
 		}

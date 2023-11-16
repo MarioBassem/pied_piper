@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -374,7 +373,7 @@ func TestCompress(t *testing.T) {
 			input:    []byte("abbcccdddd"),
 			expected: []byte{0, 0, 0, 19, 223, 212, 0},
 		},
-		"invalid_character": {
+		"inexistent_character": {
 			input:    []byte("z"),
 			hasError: true,
 		},
@@ -392,15 +391,4 @@ func TestCompress(t *testing.T) {
 			assert.Equal(t, tc.expected, got)
 		})
 	}
-}
-
-func printTree(t *node) {
-	if t == nil {
-		fmt.Printf("\n")
-		return
-	}
-
-	fmt.Printf("%+v\n", t)
-	printTree(t.Left)
-	printTree(t.Right)
 }

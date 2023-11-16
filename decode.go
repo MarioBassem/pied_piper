@@ -23,7 +23,6 @@ func decode(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("tree: %+v", root)
 
 	// read bin length (m)
 	// read next m bits
