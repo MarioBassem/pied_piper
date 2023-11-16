@@ -5,8 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-
-	"github.com/bits-and-blooms/bitset"
 )
 
 var errInvalidCompressedData = errors.New("invalid compressed data")
@@ -75,26 +73,18 @@ func (n *node) buildPrefixCodeTable() map[byte][]bool {
 // explore explores tree nodes, while assigning binary representation to leaf nodes in the code table
 func explore(n *node, representation []bool, table map[byte][]bool) {
 	if n == nil {
-		// should never happen
 		return
 	}
-
-	defer func() {
-		representation = representation[:len(representation)-1]
-	}()
 
 	if n.IsLeaf {
-		table[n.Value] = representation
+		cp := make([]bool, len(representation))
+		copy(cp, representation)
+		table[n.Value] = cp
 		return
 	}
 
-	representation = append(representation, false)
-	explore(n.Left, representation, table)
-	representation = representation[:len(representation)-1]
-
-	representation = append(representation, true)
-	explore(n.Right, representation, table)
-	representation = representation[:len(representation)-1]
+	explore(n.Left, append(representation, false), table)
+	explore(n.Right, append(representation, true), table)
 }
 
 func (n *node) compress(data []byte) ([]byte, error) {
@@ -102,29 +92,38 @@ func (n *node) compress(data []byte) ([]byte, error) {
 
 	bits := []bool{}
 	for idx := range data {
-		code := prefixCodeTable[data[idx]]
+		code, ok := prefixCodeTable[data[idx]]
+		if !ok {
+			// should never happen
+			return nil, errors.New("byte '%c' is not found in prefix code table")
+		}
+
 		for _, bit := range code {
 			bits = append(bits, bit)
 		}
 	}
 
-	biteSet := bitset.New(uint(len(bits)))
+	binBytes := []byte{}
+	currentByte := byte(0)
 	for idx := range bits {
+		if idx > 0 && idx%8 == 0 {
+			binBytes = append(binBytes, currentByte)
+			currentByte = 0
+		}
+
 		if bits[idx] {
-			biteSet.Set(uint(idx))
+			currentByte += 1 << (7 - idx%8)
 		}
 	}
 
-	bin, err := biteSet.MarshalBinary()
-	if err != nil {
-		return nil, err
+	if len(bits)%8 != 0 {
+		binBytes = append(binBytes, currentByte)
 	}
-	fmt.Printf("generated bin: %+v", bin)
 
-	result := make([]byte, 4+len(bin))
-	copy(result[4:], bin)
-
+	result := make([]byte, 4+len(binBytes))
 	binary.BigEndian.PutUint32(result, uint32(len(bits)))
+	copy(result[4:], binBytes)
+
 	return result, nil
 }
 
