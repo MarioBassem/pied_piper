@@ -1,4 +1,4 @@
-name: Lint huffman-compression
+name: Lint pied_piper
 
 on:
   push:

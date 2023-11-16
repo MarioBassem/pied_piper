@@ -1,4 +1,4 @@
-name: Test huffman-compression
+name: Test pied_piper
 
 on:
   push:
