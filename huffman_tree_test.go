@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -21,10 +20,16 @@ func TestBuildFrequencyTree(t *testing.T) {
 			input: "aaaa",
 			expected: &node{
 				Frequency: 4,
-				Left:      nil,
-				Right:     nil,
-				IsLeaf:    true,
-				Value:     'a',
+				Left: &node{
+					Frequency: 0,
+					IsLeaf:    true,
+					Value:     'b',
+				},
+				Right: &node{
+					Frequency: 4,
+					IsLeaf:    true,
+					Value:     'a',
+				},
 			},
 		},
 		"mixed_chars": {
@@ -105,10 +110,6 @@ func TestBuildFrequencyTree(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			got := buildHuffmanTree([]byte(tc.input))
 			assert.Equal(t, tc.expected, got)
-
-			jsonTree, err := json.Marshal(got)
-			assert.NoError(t, err)
-			fmt.Printf("json tree: %s", jsonTree)
 		})
 	}
 }
@@ -216,6 +217,181 @@ func TestDecompress(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestBuildPrefixCodeTable(t *testing.T) {
+	tests := map[string]struct {
+		input    *node
+		expected map[byte][]bool
+	}{
+		"nil_tree": {
+			input:    nil,
+			expected: map[byte][]bool{},
+		},
+		"two_characters": {
+			input: &node{Frequency: 10,
+				Left: &node{
+					Frequency: 5,
+					IsLeaf:    true,
+					Value:     'a',
+				},
+				Right: &node{
+					Frequency: 5,
+					IsLeaf:    true,
+					Value:     'b',
+				},
+			},
+			expected: map[byte][]bool{
+				'a': {false},
+				'b': {true},
+			},
+		},
+		"three_characters": {
+			input: &node{
+				Frequency: 10,
+				Left: &node{
+					Frequency: 5,
+					IsLeaf:    true,
+					Value:     'a',
+				},
+				Right: &node{
+					Frequency: 5,
+					Left: &node{
+						Frequency: 3,
+						IsLeaf:    true,
+						Value:     'b',
+					}, Right: &node{
+						Frequency: 2,
+						IsLeaf:    true,
+						Value:     'c',
+					},
+				},
+			},
+			expected: map[byte][]bool{
+				'a': {false},
+				'b': {true, false},
+				'c': {true, true},
+			},
+		},
+		"four_characters": {
+			input: &node{
+				Frequency: 10,
+				Left: &node{
+					Frequency: 30,
+					Left: &node{
+						Frequency: 10,
+						IsLeaf:    true,
+						Value:     'z',
+					},
+					Right: &node{
+						Frequency: 20,
+						IsLeaf:    true,
+						Value:     'x',
+					},
+				},
+				Right: &node{
+					Frequency: 5,
+					Left: &node{
+						Frequency: 3,
+						IsLeaf:    true,
+						Value:     'b',
+					}, Right: &node{
+						Frequency: 2,
+						IsLeaf:    true,
+						Value:     'c',
+					},
+				},
+			},
+			expected: map[byte][]bool{
+				'z': {false, false},
+				'x': {false, true},
+				'b': {true, false},
+				'c': {true, true},
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := tc.input.buildPrefixCodeTable()
+			assert.Equal(t, tc.expected, got)
+		})
+	}
+}
+
+func TestCompress(t *testing.T) {
+	root := &node{
+		Frequency: 10,
+		Left: &node{
+			Frequency: 4,
+			IsLeaf:    true,
+			Value:     'd',
+		},
+		Right: &node{
+			Frequency: 6,
+			Left: &node{
+				Frequency: 3,
+				IsLeaf:    true,
+				Value:     'c',
+			}, Right: &node{
+				Frequency: 3,
+				Left: &node{
+					Frequency: 1,
+					IsLeaf:    true,
+					Value:     'a',
+				},
+				Right: &node{
+					Frequency: 2,
+					IsLeaf:    true,
+					Value:     'b',
+				},
+			},
+		},
+	}
+
+	tests := map[string]struct {
+		input    []byte
+		expected []byte
+		hasError bool
+	}{
+		"empty": {
+			input:    nil,
+			expected: []byte{0, 0, 0, 0},
+		},
+		"one_character": {
+			input:    []byte("a"),
+			expected: []byte{0, 0, 0, 3, 192},
+		},
+		"two_characters": {
+			input:    []byte("ba"),
+			expected: []byte{0, 0, 0, 6, 248},
+		},
+		"three_characters": {
+			input:    []byte("dcb"),
+			expected: []byte{0, 0, 0, 6, 92},
+		},
+		"multiple_characters": {
+			input:    []byte("abbcccdddd"),
+			expected: []byte{0, 0, 0, 19, 223, 212, 0},
+		},
+		"invalid_character": {
+			input:    []byte("z"),
+			hasError: true,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			got, err := root.compress(tc.input)
+			if tc.hasError {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, got)
+		})
+	}
 }
 
 func printTree(t *node) {
