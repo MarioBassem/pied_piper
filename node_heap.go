@@ -7,7 +7,7 @@ func (n nodeHeap) Len() int {
 }
 
 func (n nodeHeap) Less(i, j int) bool {
-	if n[i].Frequency < n[j].Frequency || (n[i].Frequency == n[j].Frequency && n[i].Value < n[j].Value) {
+	if n[i].Frequency < n[j].Frequency || (n[i].Frequency == n[j].Frequency && n[i].IsLeaf && (!n[j].IsLeaf || n[i].Value < n[j].Value)) {
 		return true
 	}
 
