@@ -71,6 +71,11 @@ func TestBuildFrequencyTree(t *testing.T) {
 					Frequency: 6,
 					Left: &node{
 						Frequency: 3,
+						IsLeaf:    true,
+						Value:     'c',
+					},
+					Right: &node{
+						Frequency: 3,
 						Left: &node{
 							Frequency: 1,
 							IsLeaf:    true,
@@ -81,11 +86,6 @@ func TestBuildFrequencyTree(t *testing.T) {
 							IsLeaf:    true,
 							Value:     'b',
 						},
-					},
-					Right: &node{
-						Frequency: 3,
-						IsLeaf:    true,
-						Value:     'c',
 					},
 				},
 				Right: &node{
