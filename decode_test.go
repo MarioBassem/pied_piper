@@ -104,7 +104,7 @@ func TestReadBits(t *testing.T) {
 }
 
 func TestReadTree(t *testing.T) {
-	validData := []byte("{\"Frequency\":6,\"Left\":{\"Frequency\":3,\"IsLeaf\":true,\"Value\":97},\"Right\":{\"Frequency\":3,\"IsLeaf\":true,\"Value\":98}}")
+	validData := []byte("{\"fr\":6,\"l\":{\"fr\":3,\"ilf\":true,\"v\":97},\"r\":{\"fr\":3,\"ilf\":true,\"v\":98}}")
 	tests := map[string]struct {
 		input    []byte
 		expected *node
