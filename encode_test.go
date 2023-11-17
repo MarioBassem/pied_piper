@@ -4,10 +4,23 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
+	"io"
+	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+var letters = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+-={}[]:'\";/?.>,<\\|`~")
+
+func randSeq(n int) []byte {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return b
+}
 
 func TestEncode(t *testing.T) {
 	tests := map[string]struct {
@@ -52,5 +65,25 @@ func TestEncode(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, want, got)
 		})
+	}
+}
+
+func TestEncodeDecode(t *testing.T) {
+	for i := 1; i <= 10000000; i *= 10 {
+		str := randSeq(i)
+		r := bytes.NewReader(str)
+
+		compressed, err := encode(r)
+		assert.NoError(t, err)
+		fmt.Printf("compressed data length: %d\n", len(compressed))
+
+		got := bytes.NewBuffer(make([]byte, 0, len(str)))
+		w := io.Writer(got)
+
+		r2 := bytes.NewReader(compressed)
+		err = decode(r2, w)
+		assert.NoError(t, err)
+
+		assert.Equal(t, str, got.Bytes())
 	}
 }
