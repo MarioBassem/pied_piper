@@ -17,84 +17,62 @@ func main() {
 
 func run() error {
 	app := &cli.App{
-		Name: "piedpiper",
-		Commands: []*cli.Command{
-			{
-				Name:  "encode",
-				Usage: "encode FILE OUTPUT",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "input",
-						Usage:    "path of file to compress",
-						Required: true,
-					},
-					&cli.StringFlag{
-						Name:     "output",
-						Usage:    "path of file to write compressed data to",
-						Required: true,
-					},
-				},
-				Action: func(ctx *cli.Context) error {
-					input := ctx.String("input")
-					inputFile, err := os.Open(input)
-					if err != nil {
-						return fmt.Errorf("failed to open input file: %w", err)
-					}
+		Name:                 "piedpiper",
+		Usage:                "a huffman coding compression tool",
+		UsageText:            "piedpiper OPTIONS...",
+		EnableBashCompletion: true,
 
-					compressedBytes, err := encode(inputFile)
-					if err != nil {
-						return err
-					}
-
-					ouput := ctx.String("output")
-					outputFile, err := os.OpenFile(ouput, os.O_RDWR|os.O_CREATE, 0644)
-					if err != nil {
-						return fmt.Errorf("failed to open output file: %w", err)
-					}
-
-					_, err = outputFile.Write(compressedBytes)
-					if err != nil {
-						return fmt.Errorf("failed to write compressed data to output file: %w", err)
-					}
-
-					return nil
-				},
+		ArgsUsage: "",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:     "input",
+				Usage:    "path of input file",
+				Required: true,
 			},
-			{
+			&cli.StringFlag{
+				Name:     "output",
+				Usage:    "path of output file",
+				Required: true,
+			},
+			&cli.BoolFlag{
 				Name:  "decode",
-				Usage: "decode FILE OUTPUT",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "input",
-						Usage:    "path of compressed file",
-						Required: true,
-					},
-					&cli.StringFlag{
-						Name:     "output",
-						Usage:    "path to file to decompress data to",
-						Required: true,
-					},
-				},
-				Action: func(ctx *cli.Context) error {
-					input := ctx.String("input")
-					inputFile, err := os.Open(input)
-					if err != nil {
-						return fmt.Errorf("failed to open compressed file: %w", err)
-					}
-
-					output := ctx.String("output")
-					outputFile, err := os.OpenFile(output, os.O_RDWR|os.O_CREATE, 0644)
-					if err != nil {
-						return fmt.Errorf("failed to open output file: %w", err)
-					}
-
-					if err := decode(inputFile, outputFile); err != nil {
-						return fmt.Errorf("failed to decompress data: %w", err)
-					}
-
-					return nil
-				},
+				Usage: "decode input to output",
 			},
+		},
+		Action: func(ctx *cli.Context) error {
+			input := ctx.String("input")
+			output := ctx.String("output")
+
+			inputFile, err := os.Open(input)
+			if err != nil {
+				return fmt.Errorf("failed to open input file: %w", err)
+			}
+
+			outputFile, err := os.OpenFile(output, os.O_RDWR|os.O_CREATE, 0644)
+			if err != nil {
+				return fmt.Errorf("failed to open output file: %w", err)
+			}
+
+			dec := ctx.Bool("decode")
+			if dec {
+				if err := decode(inputFile, outputFile); err != nil {
+					return fmt.Errorf("failed to decompress data: %w", err)
+				}
+
+				return nil
+			}
+
+			compressedBytes, err := encode(inputFile)
+			if err != nil {
+				return err
+			}
+
+			_, err = outputFile.Write(compressedBytes)
+			if err != nil {
+				return fmt.Errorf("failed to write compressed data to output file: %w", err)
+			}
+
+			return nil
 		},
 	}
 
