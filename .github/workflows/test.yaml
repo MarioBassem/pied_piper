@@ -1,4 +1,4 @@
-name: Test pied_piper
+name: Test piedpiper
 
 on:
   push:

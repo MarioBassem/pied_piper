@@ -1,4 +1,4 @@
-name: Lint pied_piper
+name: Lint piedpiper
 
 on:
   push:
