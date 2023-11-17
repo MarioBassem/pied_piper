@@ -86,7 +86,7 @@ func extractBitsFromBytes(r io.Reader, bitsCount int) ([]bool, error) {
 			return nil, fmt.Errorf("failed to read compressed data: %w", errInvalidCompressedData)
 		}
 
-		if int(math.Ceil(float64(bitsCount)/8)) < n+int(math.Ceil(float64(len(bits)/8))) {
+		if int(math.Ceil(float64(bitsCount)/8)) < n+int(math.Ceil(float64(len(bits))/8)) {
 			return nil, fmt.Errorf("compressed data size exceeded given size: %w", errInvalidCompressedData)
 		}
 
