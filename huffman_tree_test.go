@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,8 +14,20 @@ func TestBuildFrequencyTree(t *testing.T) {
 		expected *node
 	}{
 		"empty": {
-			input:    "",
-			expected: nil,
+			input: "",
+			expected: &node{
+				Frequency: 0,
+				Left: &node{
+					Frequency: 0,
+					IsLeaf:    true,
+					Value:     'a',
+				},
+				Right: &node{
+					Frequency: 0,
+					IsLeaf:    true,
+					Value:     'b',
+				},
+			},
 		},
 		"same_char": {
 			input: "aaaa",
@@ -107,7 +121,9 @@ func TestBuildFrequencyTree(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			got := buildHuffmanTree([]byte(tc.input))
+			r := bytes.NewReader([]byte(tc.input))
+			got, err := buildHuffmanTree(r)
+			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, got)
 		})
 	}
@@ -141,14 +157,16 @@ func TestDecompress(t *testing.T) {
 
 		for name, tc := range tests {
 			t.Run(name, func(t *testing.T) {
-				got, err := root.decompress(tc.input)
+				got := bytes.NewBuffer(make([]byte, 0, len(tc.expected)))
+				w := io.Writer(got)
+				err := root.decompress(tc.input, w)
 				if tc.hasError {
 					assert.Error(t, err)
 					return
 				}
 
 				assert.NoError(t, err)
-				assert.Equal(t, tc.expected, got)
+				assert.Equal(t, tc.expected, got.Bytes())
 			})
 		}
 
@@ -205,14 +223,16 @@ func TestDecompress(t *testing.T) {
 
 		for name, tc := range tests {
 			t.Run(name, func(t *testing.T) {
-				got, err := root.decompress(tc.input)
+				got := bytes.NewBuffer(make([]byte, 0, len(tc.expected)))
+				w := io.Writer(got)
+				err := root.decompress(tc.input, w)
 				if tc.hasError {
 					assert.Error(t, err)
 					return
 				}
 
 				assert.NoError(t, err)
-				assert.Equal(t, tc.expected, got)
+				assert.Equal(t, tc.expected, got.Bytes())
 			})
 		}
 	})
@@ -381,7 +401,8 @@ func TestCompress(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			got, err := root.compress(tc.input)
+			r := bytes.NewReader(tc.input)
+			got, err := root.compress(r)
 			if tc.hasError {
 				assert.Error(t, err)
 				return

@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 )
 
 var errInvalidCompressedData = errors.New("invalid compressed data")
@@ -18,14 +19,26 @@ type node struct {
 }
 
 // this needs to use a heap for nodes
-func buildHuffmanTree(b []byte) *node {
-	if len(b) == 0 {
-		return nil
+func buildHuffmanTree(r io.Reader) (*node, error) {
+	if r == nil {
+		return nil, nil
 	}
 
 	byteFrequency := map[byte]uint32{}
-	for idx := range b {
-		byteFrequency[b[idx]]++
+	for {
+		buff := make([]byte, buffSize)
+		n, err := r.Read(buff)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return nil, err
+		}
+
+		for i := 0; i < n; i++ {
+			byteFrequency[buff[i]]++
+		}
+
+		if errors.Is(err, io.EOF) {
+			break
+		}
 	}
 
 	// ensure there are more than one character
@@ -58,7 +71,7 @@ func buildHuffmanTree(b []byte) *node {
 		})
 	}
 
-	return &(*nodes)[0]
+	return &(*nodes)[0], nil
 }
 
 func (n *node) buildPrefixCodeTable() map[byte][]bool {
@@ -87,18 +100,30 @@ func explore(n *node, representation []bool, table map[byte][]bool) {
 	explore(n.Right, append(representation, true), table)
 }
 
-func (n *node) compress(data []byte) ([]byte, error) {
+func (n *node) compress(r io.Reader) ([]byte, error) {
 	prefixCodeTable := n.buildPrefixCodeTable()
 
 	bits := []bool{}
-	for idx := range data {
-		code, ok := prefixCodeTable[data[idx]]
-		if !ok {
-			// should never happen
-			return nil, errors.New("byte '%c' is not found in prefix code table")
+	for {
+		data := make([]byte, buffSize)
+		n, err := r.Read(data)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return nil, err
 		}
 
-		bits = append(bits, code...)
+		for i := 0; i < n; i++ {
+			code, ok := prefixCodeTable[data[i]]
+			if !ok {
+				// should never happen
+				return nil, errors.New("byte '%c' is not found in prefix code table")
+			}
+
+			bits = append(bits, code...)
+		}
+
+		if errors.Is(err, io.EOF) {
+			break
+		}
 	}
 
 	binBytes := []byte{}
@@ -125,20 +150,29 @@ func (n *node) compress(data []byte) ([]byte, error) {
 	return result, nil
 }
 
-func (root *node) decompress(bits []bool) ([]byte, error) {
-	data := []byte{}
+func (root *node) decompress(bits []bool, w io.Writer) error {
 	if len(bits) == 0 {
-		return data, nil
+		return nil
 	}
 
+	data := make([]byte, 0, buffSize)
 	cur := root
 	for i := 0; i <= len(bits); i++ {
 		if cur == nil {
-			return nil, fmt.Errorf("invalid char code: %w", errInvalidCompressedData)
+			return fmt.Errorf("invalid char code: %w", errInvalidCompressedData)
 		}
 
 		if cur.IsLeaf {
 			data = append(data, cur.Value)
+			if len(data) == buffSize {
+				_, err := w.Write(data)
+				if err != nil {
+					return fmt.Errorf("write failed: %w", err)
+				}
+
+				data = make([]byte, 0, buffSize)
+			}
+
 			cur = root
 			if i == len(bits) {
 				break
@@ -150,7 +184,7 @@ func (root *node) decompress(bits []bool) ([]byte, error) {
 
 		if i == len(bits) {
 			// last bit must be a leaf
-			return nil, fmt.Errorf("incorrect last character code: %w", errInvalidCompressedData)
+			return fmt.Errorf("incorrect last character code: %w", errInvalidCompressedData)
 		}
 
 		if !bits[i] {
@@ -161,5 +195,10 @@ func (root *node) decompress(bits []bool) ([]byte, error) {
 		cur = cur.Right
 	}
 
-	return data, nil
+	_, err := w.Write(data)
+	if err != nil {
+		return fmt.Errorf("write failed: %w", err)
+	}
+
+	return nil
 }

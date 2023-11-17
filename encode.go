@@ -4,11 +4,17 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 )
 
-func encode(b []byte) ([]byte, error) {
+const buffSize = 16 * 1024
+
+func encode(r io.ReadSeeker) ([]byte, error) {
 	// build huffman tree
-	tree := buildHuffmanTree(b)
+	tree, err := buildHuffmanTree(r)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build huffman tree: %w", err)
+	}
 
 	treeJson, err := json.Marshal(tree)
 	if err != nil {
@@ -23,10 +29,14 @@ func encode(b []byte) ([]byte, error) {
 
 	encoding := make([]byte, 4+len(treeJson))
 	binary.BigEndian.PutUint32(encoding, byteCount)
-
 	copy(encoding[4:], treeJson)
 
-	compressedBytes, err := tree.compress(b)
+	_, err = r.Seek(0, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	compressedBytes, err := tree.compress(r)
 	if err != nil {
 		return nil, err
 	}

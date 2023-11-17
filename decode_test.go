@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,9 +20,15 @@ func TestExtractBitsFromBytes(t *testing.T) {
 			expected: []bool{},
 			hasError: false,
 		},
-		"invalid_data": {
+		"more_data": {
 			count:    8,
 			data:     []byte{'a', 'b'},
+			expected: nil,
+			hasError: true,
+		},
+		"less_data": {
+			count:    10,
+			data:     []byte("a"),
 			expected: nil,
 			hasError: true,
 		},
@@ -35,7 +42,8 @@ func TestExtractBitsFromBytes(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			got, err := extractBitsFromBytes(tc.count, tc.data)
+			r := bytes.NewReader(tc.data)
+			got, err := extractBitsFromBytes(r, tc.count)
 			if tc.hasError {
 				assert.Error(t, err)
 				return
@@ -82,7 +90,8 @@ func TestReadBits(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			got, err := readBits(tc.input)
+			r := bytes.NewReader(tc.input)
+			got, err := readBits(r)
 			if tc.hasError {
 				assert.Error(t, err)
 				return
@@ -128,14 +137,14 @@ func TestReadTree(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			got, n, err := readTree(tc.input)
+			r := bytes.NewReader(tc.input)
+			got, err := readTree(r)
 			if tc.hasError {
 				assert.Error(t, err)
 				return
 			}
 
 			assert.Equal(t, tc.expected, got)
-			assert.Equal(t, tc.count, n)
 			assert.NoError(t, err)
 		})
 	}

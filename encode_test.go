@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"testing"
@@ -34,7 +35,10 @@ func TestEncode(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			tree := buildHuffmanTree(tc.input)
+			r := bytes.NewReader(tc.input)
+			tree, err := buildHuffmanTree(r)
+			assert.NoError(t, err)
+
 			jsonTree, err := json.Marshal(tree)
 			assert.NoError(t, err)
 			cntBytes := make([]byte, 4)
@@ -43,7 +47,8 @@ func TestEncode(t *testing.T) {
 			want := append(cntBytes, jsonTree...)
 			want = append(want, tc.compressedData...)
 
-			got, err := encode(tc.input)
+			r = bytes.NewReader(tc.input)
+			got, err := encode(r)
 			assert.NoError(t, err)
 			assert.Equal(t, want, got)
 		})
