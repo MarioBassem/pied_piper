@@ -6,16 +6,17 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 )
 
 var errInvalidCompressedData = errors.New("invalid compressed data")
 
 type node struct {
-	Frequency uint32 `json:",omitempty"`
-	Left      *node  `json:",omitempty"`
-	Right     *node  `json:",omitempty"`
-	IsLeaf    bool   `json:",omitempty"`
-	Value     byte   `json:",omitempty"`
+	Frequency uint32 `json:"fr,omitempty"`
+	Left      *node  `json:"l,omitempty"`
+	Right     *node  `json:"r,omitempty"`
+	IsLeaf    bool   `json:"ilf,omitempty"`
+	Value     byte   `json:"v,omitempty"`
 }
 
 // this needs to use a heap for nodes
@@ -126,21 +127,13 @@ func (n *node) compress(r io.Reader) ([]byte, error) {
 		}
 	}
 
-	binBytes := []byte{}
-	currentByte := byte(0)
+	binBytes := make([]byte, int(math.Ceil(float64(len(bits))/8)))
 	for idx := range bits {
-		if idx > 0 && idx%8 == 0 {
-			binBytes = append(binBytes, currentByte)
-			currentByte = 0
-		}
+		currentByte := &binBytes[idx/8]
 
 		if bits[idx] {
-			currentByte += 1 << (7 - idx%8)
+			*currentByte += 1 << (7 - idx%8)
 		}
-	}
-
-	if len(bits)%8 != 0 {
-		binBytes = append(binBytes, currentByte)
 	}
 
 	result := make([]byte, 4+len(binBytes))
